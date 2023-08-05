@@ -13,7 +13,7 @@ use strum::IntoEnumIterator;
 
 const BLOCKS: Dir = include_dir!("assets/blocks");
 const ASSET_SIZE: usize = 16;
-const BUILD_LIMIT: u16 = 320;
+pub const BUILD_LIMIT: u16 = 320;
 
 #[derive(Builder)]
 pub struct Options {
