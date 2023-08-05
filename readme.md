@@ -16,10 +16,11 @@ make minecraft pixel art designs from an image.
 	</tr>
 </table>
 
-### Upcoming features
+### Todo
 
 - Schematic generation
-- Output to different image formats
-- Make list of resources and generate images to represent that
+- Generate graphical resource list
 - WASM support
 - Potentially make it look better on lower resolutions?
+- Look into [PixelStacker](https://github.com/Pangamma/PixelStacker) - could I implement similar functionality because the results are GORGEOUS!
+- proc macro to replace the build script and generate the enums/impls from info in a json document

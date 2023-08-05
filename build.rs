@@ -6,18 +6,21 @@ use std::io::{Result, Write};
 fn main() -> Result<()> {
     // create average.rs, a file which contains a phf::Map of the average colours of each block
     let mut enum_ = String::from(
-        "#[derive(Clone, EnumIter)]
-pub enum Blocks {",
+        "#[derive(Debug, Clone, PartialEq, Eq, Hash, EnumIter)]
+pub enum Blocks {
+    Air,",
     );
     let mut into_rgb = String::from(
         "impl Into<Rgb> for Blocks {
     fn into(self) -> Rgb {
-        match self {",
+        match self {
+            Blocks::Air => Rgb::new(0., 0., 0.),",
     );
     let mut asref_path = String::from(
         "impl AsRef<Path> for Blocks {
     fn as_ref(&self) -> &Path {
-        match self {",
+        match self {
+            Blocks::Air => Path::new(\"air.png\"),",
     );
 
     for file in fs::read_dir("./assets/blocks")? {

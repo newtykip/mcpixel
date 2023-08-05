@@ -1,12 +1,13 @@
 mod average;
+mod config;
 
 use average::Blocks;
 use color_space::{CompareCie1976, CompareCie2000, CompareCmc, CompareEuclidean, Rgb};
-use derive_builder::Builder;
-pub use image::imageops::FilterType as DownsamplingMethod;
+pub use config::{ColourSpace, Config, DownsamplingMethod};
 use image::{imageops, DynamicImage, RgbaImage};
 use include_dir::{include_dir, Dir};
 use rayon::prelude::*;
+use std::collections::HashMap;
 use std::io::{Error, ErrorKind, Result};
 use std::ops::{Div, Mul};
 use strum::IntoEnumIterator;
@@ -15,35 +16,13 @@ const BLOCKS: Dir = include_dir!("assets/blocks");
 const ASSET_SIZE: usize = 16;
 pub const BUILD_LIMIT: u16 = 320;
 
-#[derive(Builder)]
-pub struct Options {
-    colour_space: ColourSpace,
-    downsampling: DownsamplingMethod,
-}
-
-impl Default for Options {
-    fn default() -> Self {
-        Self {
-            colour_space: ColourSpace::Cie2000,
-            downsampling: DownsamplingMethod::Nearest,
-        }
-    }
-}
-
-#[derive(Clone)]
-pub enum ColourSpace {
-    Cie2000,
-    Cie1976,
-    Cmc,
-    Euclidean,
-}
-
 pub struct Design {
-    blocks: Vec<Vec<Option<Blocks>>>,
+    blocks: Vec<Vec<Blocks>>,
 }
 
 impl Design {
-    pub fn new(image: &DynamicImage, build_height: u16, options: Option<Options>) -> Result<Self> {
+    /// Creates a new design from an image
+    pub fn new(image: &DynamicImage, build_height: u16, config: Option<Config>) -> Result<Self> {
         // ensure that the build height is not greater than the build limit
         if build_height > BUILD_LIMIT {
             return Err(Error::new(
@@ -53,18 +32,18 @@ impl Design {
         }
 
         // resize the image to the build height
-        let options = options.unwrap_or_default();
+        let config = config.unwrap_or_default();
         let image = image.to_rgba8();
         let image = imageops::resize(
             &image,
             (image.width().mul(build_height as u32) + image.height() - 1).div(image.height()),
             build_height as u32,
-            options.downsampling,
+            config.downsampling,
         );
         let (width, height) = image.dimensions();
 
         // create the output list
-        let mut blocks = vec![vec![None; width as usize]; height as usize];
+        let mut blocks = vec![vec![Blocks::Air; width as usize]; height as usize];
 
         for y in 0..height {
             for x in 0..width {
@@ -82,7 +61,7 @@ impl Design {
                     .par_bridge()
                     .map(|block| {
                         let avg: Rgb = block.clone().into();
-                        let difference = match options.colour_space {
+                        let difference = match config.colour_space {
                             ColourSpace::Cie2000 => avg.compare_cie2000(&colour),
                             ColourSpace::Cie1976 => avg.compare_cie1976(&colour),
                             ColourSpace::Cmc => avg.compare_cmc(&colour),
@@ -95,13 +74,14 @@ impl Design {
                     .unwrap()
                     .0;
 
-                blocks[y as usize][x as usize] = Some(block);
+                blocks[y as usize][x as usize] = block;
             }
         }
 
         Ok(Self { blocks })
     }
 
+    /// Draws the design as an image
     pub fn draw_image(&self) -> Result<RgbaImage> {
         let mut output = RgbaImage::new(
             (self.blocks[0].len() * ASSET_SIZE) as u32,
@@ -109,9 +89,10 @@ impl Design {
         );
 
         for (y, row) in self.blocks.iter().enumerate() {
-            for (x, col) in row.iter().enumerate() {
-                if let Some(path) = col {
-                    let asset = BLOCKS.get_file(path);
+            for (x, block) in row.iter().enumerate() {
+                if let Blocks::Air = block {
+                } else {
+                    let asset = BLOCKS.get_file(block);
 
                     if let Some(asset) = asset {
                         let asset = image::load_from_memory(asset.contents())
@@ -125,5 +106,23 @@ impl Design {
         }
 
         Ok(output)
+    }
+
+    /// Returns the dimensions of the design
+    pub fn dimensions(&self) -> (usize, usize) {
+        (self.blocks[0].len(), self.blocks.len())
+    }
+
+    /// Returns a hashmap of the blocks and their counts
+    pub fn count_blocks(&self) -> HashMap<Blocks, usize> {
+        let mut resources = HashMap::new();
+
+        for row in &self.blocks {
+            for block in row {
+                *resources.entry(block.clone()).or_insert(0) += 1;
+            }
+        }
+
+        resources
     }
 }
