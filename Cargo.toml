@@ -4,12 +4,20 @@ version = "0.1.0"
 edition = "2021"
 build = "build.rs"
 
+[features]
+default = ["1.20"]
+
+# versions of minecraft
+"1.20" = []
+
+
 [dependencies]
 color_space = "0.5.3"
 derive_builder = "0.12.0"
 image = "0.24.6"
 include_dir = "0.7.3"
 rayon = "1.7.0"
+rustmatica = { git = "https://github.com/newtykins/rustmatica", branch = "mcpixel" }
 strum = { version = "0.25.0", features = ["derive"] }
 
 [build-dependencies]

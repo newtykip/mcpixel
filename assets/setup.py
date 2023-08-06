@@ -6,13 +6,26 @@ import os
 # change working directory to the script's directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-#! UPDATE THIS TO THE LATEST VERSION - currently on 1.20.1
-#! FOUND ON https://mcversions.net/
-CLIENT_JAR_URL = "https://piston-data.mojang.com/v1/objects/0c3ec587af28e5a785c0b4a7b8a30f9a8f78f838/client.jar"
+VERSION_ID = "1.20.1"
 
 # minecraft property encyclopedia urls
 BLOCK_DATA_URL = "https://raw.githubusercontent.com/JoakimThorsen/MCPropertyEncyclopedia/main/data/block_data.json"
 ITEM_DATA_URL = "https://raw.githubusercontent.com/JoakimThorsen/MCPropertyEncyclopedia/main/data/item_data.json"
+
+# find client jar url
+versions = requests.get(
+    "https://launchermeta.mojang.com/mc/game/version_manifest.json"
+).json()["versions"]
+
+for version in versions:
+    if version["id"] == VERSION_ID:
+        version_url = version["url"]
+        break
+
+if not version_url:
+    raise Exception("Version not found")
+
+client_jar_url = requests.get(version_url).json()["downloads"]["client"]["url"]
 
 # generate id list
 blocks = requests.get(BLOCK_DATA_URL).json()
@@ -76,7 +89,7 @@ else:
         os.remove(os.path.join("blocks", file))
 
 # download latest assets
-jar = requests.get(CLIENT_JAR_URL)
+jar = requests.get(client_jar_url)
 
 with ZipFile(BytesIO(jar.content)) as zip:
     for info in zip.infolist():
